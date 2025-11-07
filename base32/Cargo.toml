@@ -1,0 +1,10 @@
+[package]
+name = "base32"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+
+[[bin]]
+name = "encoded_len_bench"
+path = "benches/encoded_len_bench.rs"
