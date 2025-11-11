@@ -5,6 +5,13 @@ edition = "2021"
 
 [dependencies]
 
-[[bin]]
-name = "encoded_len_bench"
-path = "benches/encoded_len_bench.rs"
+[dev-dependencies]
+criterion = { version = "0.5", features = ["html_reports"] }
+
+[[bench]]
+name = "encode_decode"
+harness = false
+
+[[bench]]
+name = "decode_bench"
+harness = false
