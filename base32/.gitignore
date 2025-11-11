@@ -3,7 +3,7 @@
 
 # Text and report files
 *.txt
-*.md
+
 
 # Specific generated files
 ARM64_BENCHMARK.md
