@@ -1,0 +1,22 @@
+# Assembly files
+*.s
+
+# Text and report files
+*.txt
+
+
+# Specific generated files
+ARM64_BENCHMARK.md
+ASSEMBLY_COMPARISON.md
+BENCHMARK_REPORT.md
+
+# Rust build artifacts
+target/
+Cargo.lock
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
