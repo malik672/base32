@@ -57,12 +57,13 @@ pub fn encode_into(out: &mut [u8], data: &[u8]) {
             let block = &*(data.as_ptr().add(i * 5) as *const [u8; 5]);
 
             // SAFETY: Valid because:
-            // - out has length encoded_buffer_len(data.len()) (checked by debug_assert)
+            // - out has length encoded_buffer_len(data.len())
             // - i < num_blocks, so i*8 + 8 <= out.len() (each block produces exactly 8 chars)
             // - We have mutable access to out
             let out_slice = std::slice::from_raw_parts_mut(out.as_mut_ptr().add(i * 8), 8);
             encode_block(block, out_slice);
         }
+        
     }
 
     // Handle remainder
