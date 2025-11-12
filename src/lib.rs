@@ -50,21 +50,37 @@ pub fn encode_into(out: &mut [u8], data: &[u8]) {
     // Process full 5-byte blocks
     for i in 0..num_blocks {
         unsafe {
+            // SAFETY: Valid because:
+            // - i < num_blocks, so i*5 < data.len() (we only process complete 5-byte blocks)
+            // - data pointer is valid for the entire slice
+            // - Casting to [u8; 5] is safe as we're creating references to complete chunks
             let block = &*(data.as_ptr().add(i * 5) as *const [u8; 5]);
+
+            // SAFETY: Valid because:
+            // - out has length encoded_buffer_len(data.len()) (checked by debug_assert)
+            // - i < num_blocks, so i*8 + 8 <= out.len() (each block produces exactly 8 chars)
+            // - We have mutable access to out
             let out_slice = std::slice::from_raw_parts_mut(out.as_mut_ptr().add(i * 8), 8);
             encode_block(block, out_slice);
         }
     }
-    
+
     // Handle remainder
     if remainder != 0 {
         let mut block = [0u8; 5];
         unsafe {
+            // SAFETY: Valid because:
+            // - num_blocks * 5 + remainder <= data.len() by definition of remainder = data.len() % 5
+            // - copy_nonoverlapping(src, dst, count) is safe when src has at least count bytes
             std::ptr::copy_nonoverlapping(
                 data.as_ptr().add(num_blocks * 5),
                 block.as_mut_ptr(),
                 remainder,
             );
+
+            // SAFETY: Valid because:
+            // - num_blocks * 8 + 8 <= out.len() (final block always fits in allocated buffer)
+            // - out has length encoded_buffer_len(data.len()) which is always a multiple of 8
             let out_slice = std::slice::from_raw_parts_mut(out.as_mut_ptr().add(num_blocks * 8), 8);
             encode_block(&block, out_slice);
         }
@@ -76,8 +92,13 @@ fn encode_block(block: &[u8; 5], out: &mut [u8]) {
     let mut input = [0u8; 8];
     input[..5].copy_from_slice(block);
     let bits = u64::from_be_bytes(input);
-    
+
     unsafe {
+        // SAFETY: Valid because:
+        // - out has length >= 8 (guaranteed by caller: encode_into passes exactly 8 bytes)
+        // - Each write is to indices 0-7, all within bounds
+        // - (bits >> N) & 0x1F extracts 5 bits, producing values 0-31
+        // - ALPHABET.get_unchecked(0..32) is always safe as ALPHABET has 32 characters
         *out.get_unchecked_mut(0) = *ALPHABET.get_unchecked(((bits >> 59) & 0x1F) as usize);
         *out.get_unchecked_mut(1) = *ALPHABET.get_unchecked(((bits >> 54) & 0x1F) as usize);
         *out.get_unchecked_mut(2) = *ALPHABET.get_unchecked(((bits >> 49) & 0x1F) as usize);
@@ -113,15 +134,23 @@ pub fn decode(data: &str) -> Result<Vec<u8>, InvalidBase32Error> {
     // Process full 8-byte blocks
     for i in 0..num_blocks {
         unsafe {
+            // SAFETY: Valid because:
+            // - i < num_blocks, so i*8 < data_bytes.len() (we only process complete 8-byte blocks)
+            // - data_bytes pointer is valid for the entire slice
+            // - Casting to [u8; 8] is safe as we're creating references to complete chunks
             let chunk = &*(data_bytes.as_ptr().add(i * 8) as *const [u8; 8]);
             decode_block(chunk, &mut out, i * 8, data)?;
         }
     }
-    
+
     // Handle remainder
     if remainder > 0 {
-        let mut chunk = [b'0'; 8]; 
+        let mut chunk = [b'0'; 8];
         unsafe {
+            // SAFETY: Valid because:
+            // - num_blocks * 8 + remainder <= data_bytes.len() by definition of remainder
+            // - copy_nonoverlapping(src, dst, count) is safe when src has at least count bytes
+            // - chunk buffer is 8 bytes, and remainder is at most 7 (since remainder < 8)
             std::ptr::copy_nonoverlapping(
                 data_bytes.as_ptr().add(num_blocks * 8),
                 chunk.as_mut_ptr(),
@@ -144,10 +173,13 @@ fn decode_block(
     original: &str,
 ) -> Result<(), InvalidBase32Error> {
     let mut indices = [0u8; 8];
-    
+
     // Decode using lookup table
     for i in 0..8 {
         let byte = chunk[i];
+        // SAFETY: Valid because:
+        // - byte is u8, so as usize produces values 0-255
+        // - DECODE_TABLE has 256 elements, so indices [0..256) are all valid
         let index = unsafe { *DECODE_TABLE.get_unchecked(byte as usize) };
         
         if index == 0xFF {
