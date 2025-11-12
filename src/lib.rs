@@ -45,7 +45,9 @@ pub fn encode_into(out: &mut [u8], data: &[u8]) {
     debug_assert_eq!(out.len(), encoded_buffer_len(data.len()));
     
     let num_blocks = data.len() / 5;
-    let remainder = data.len() % 5;
+
+    // Way better than using modulus: check on gobdolt
+    let remainder = data.len() - num_blocks;
     
     // Process full 5-byte blocks
     for i in 0..num_blocks {
@@ -63,7 +65,7 @@ pub fn encode_into(out: &mut [u8], data: &[u8]) {
             let out_slice = std::slice::from_raw_parts_mut(out.as_mut_ptr().add(i * 8), 8);
             encode_block(block, out_slice);
         }
-        
+
     }
 
     // Handle remainder
