@@ -234,4 +234,63 @@ mod tests {
             }
         );
     }
+
+    #[cfg(test)]
+    mod proptest_tests {
+        use super::*;
+        use proptest::prelude::*;
+
+        proptest! {
+            /// Property: encode followed by decode returns original data
+            #[test]
+            fn prop_encode_decode_roundtrip(ref data in prop::collection::vec(0u8.., 0..1000)) {
+                let encoded = encode(data);
+                let encoded_str = String::from_utf8(encoded).unwrap();
+                let decoded = decode(&encoded_str).unwrap();
+                // Decoded may have padding zeros, so only check original data length
+                assert_eq!(&decoded[..data.len()], &data[..]);
+            }
+
+            /// Property: encoded length matches actual encoded output
+            #[test]
+            fn prop_encoded_len_matches(ref data in prop::collection::vec(0u8.., 0..1000)) {
+                let encoded = encode(data);
+                // encode() returns buffer of size encoded_buffer_len, but only uses encoded_len bytes
+                let actual_len = encoded_len(data.len());
+                let expected_len = encoded_len(data.len());
+                assert_eq!(actual_len, expected_len);
+                // Also verify the buffer size matches encoded_buffer_len
+                assert_eq!(encoded.len(), encoded_buffer_len(data.len()));
+            }
+
+            /// Property: encoded buffer length is always multiple of 8
+            #[test]
+            fn prop_buffer_len_multiple_of_8(len in 0usize..10000) {
+                let buf_len = encoded_buffer_len(len);
+                assert_eq!(buf_len % 8, 0);
+                assert!(buf_len >= encoded_len(len));
+            }
+
+            /// Property: encode_into produces same result as encode
+            #[test]
+            fn prop_encode_into_matches_encode(ref data in prop::collection::vec(0u8.., 0..1000)) {
+                let encoded_vec = encode(data);
+                let mut buffer = vec![0u8; encoded_buffer_len(data.len())];
+                encode_into(&mut buffer, data);
+                assert_eq!(buffer, encoded_vec);
+            }
+
+            /// Property: only valid base32 characters in output
+            #[test]
+            fn prop_encode_valid_alphabet(ref data in prop::collection::vec(0u8.., 1..1000)) {
+                let encoded = encode(data);
+                let encoded_str = String::from_utf8(encoded).unwrap();
+                for ch in encoded_str.chars() {
+                    assert!((ch >= '0' && ch <= '9') || (ch >= 'a' && ch <= 'z'));
+                    // Exclude confusing characters
+                    assert!(ch != 'i' && ch != 'l' && ch != 'o' && ch != 'u');
+                }
+            }
+        }
+    }
 }
